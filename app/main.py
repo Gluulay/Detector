@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from . import storage
@@ -12,6 +13,17 @@ app = FastAPI(
     title="KPay / WavePay Receipt Fraud Detector",
     description="Upload a KPay or WavePay payment screenshot to check it for signs of tampering.",
     version="0.2.0",
+)
+
+# Allows a browser-based frontend (your website, or the test page) hosted
+# on a different origin to call this API. Locked down to "*" (any origin)
+# for now since this is a testing/demo setup — tighten to your actual
+# website's domain before treating this as production-hardened.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
