@@ -86,9 +86,16 @@ async def submit_proof(
 
 
 @app.get("/submissions")
-def list_submissions(status: Optional[str] = None):
-    """Admin view: list submissions, optionally filtered by ?status=needs_review etc."""
-    return storage.list_submissions(status)
+def list_submissions(status: Optional[str] = None, provider: Optional[str] = None, reference_id: Optional[str] = None):
+    """
+    Admin view: list submissions.
+    Filter with ?status=needs_review, ?provider=kpay (or wavepay), and/or
+    ?reference_id=... to see one customer/order's submission history.
+    """
+    records = storage.list_submissions(status=status, provider=provider)
+    if reference_id:
+        records = [r for r in records if r.get("reference_id") == reference_id]
+    return records
 
 
 @app.get("/submissions/{submission_id}")

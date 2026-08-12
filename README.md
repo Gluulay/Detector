@@ -147,6 +147,31 @@ Docker/Render, note that the filesystem is typically **not persistent**
 across redeploys — for production use, mount a persistent volume or swap
 `app/storage.py` for a real database/object storage.
 
+## Provider color detection
+
+`app/color_detect.py` detects KPay vs WavePay from the receipt's
+dominant color, as a training-free complement to the OCR text check.
+It's calibrated from real receipts (not guessed):
+
+- **KBZPay**: ~99% of colorful pixels fall in hue 200–220° (blue) —
+  its card border and "Pay" button chrome are blue, even though the
+  small logo text is red.
+- **WavePay**: ~94% of colorful pixels fall in hue 40–60° (yellow/gold).
+
+OCR text is still tried first (`details.ocr.provider_guess`); color
+is the fallback when OCR can't find an English branding keyword —
+which matters more than it sounds, since some receipt screens (e.g.
+personal-transfer confirmations) are entirely in Burmese with no
+English "KPay"/"Wave" text at all, so OCR alone misses the provider
+on those. Color caught it correctly in that case during testing.
+
+**Caveat:** calibrated on one real receipt screenshot per provider so
+far. If you see misclassifications on other receipt templates (e.g. a
+different WavePay screen style than the one tested), collect a few
+more real samples, check `details.color` in the `/detect` response
+for the actual `kpay_blue_ratio` / `wavepay_gold_ratio`, and adjust
+`KPAY_HUE_RANGE` / `WAVEPAY_HUE_RANGE` in `color_detect.py` accordingly.
+
 ## Calibrating the score
 
 The weights in `detector.py` are reasonable starting points, not ground

@@ -32,6 +32,7 @@ def init_db() -> None:
                 id TEXT PRIMARY KEY,
                 created_at TEXT NOT NULL,
                 reference_id TEXT,
+                provider TEXT,
                 image_path TEXT NOT NULL,
                 fraud_score REAL NOT NULL,
                 verdict TEXT NOT NULL,
@@ -56,10 +57,13 @@ def save_submission(
     with open(image_path, "wb") as f:
         f.write(image_bytes)
 
+    provider = detection.get("details", {}).get("provider", {}).get("guess")
+
     record = {
         "id": submission_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "reference_id": reference_id,
+        "provider": provider,  # "kpay" | "wavepay" | None (couldn't tell)
         "image_path": image_path,
         "fraud_score": detection["fraud_score"],
         "verdict": detection["verdict"],
@@ -73,10 +77,10 @@ def save_submission(
         conn.execute(
             """
             INSERT INTO submissions
-                (id, created_at, reference_id, image_path, fraud_score,
+                (id, created_at, reference_id, provider, image_path, fraud_score,
                  verdict, status, reasons, reviewed, reviewer_note)
             VALUES
-                (:id, :created_at, :reference_id, :image_path, :fraud_score,
+                (:id, :created_at, :reference_id, :provider, :image_path, :fraud_score,
                  :verdict, :status, :reasons, :reviewed, :reviewer_note)
             """,
             record,
@@ -86,16 +90,22 @@ def save_submission(
     return record
 
 
-def list_submissions(status: Optional[str] = None) -> list:
+def list_submissions(status: Optional[str] = None, provider: Optional[str] = None) -> list:
     query = "SELECT * FROM submissions"
-    params: tuple = ()
+    clauses = []
+    params: list = []
     if status:
-        query += " WHERE status = ?"
-        params = (status,)
+        clauses.append("status = ?")
+        params.append(status)
+    if provider:
+        clauses.append("provider = ?")
+        params.append(provider)
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
     query += " ORDER BY created_at DESC"
 
     with closing(_connect()) as conn:
-        rows = conn.execute(query, params).fetchall()
+        rows = conn.execute(query, tuple(params)).fetchall()
     return [dict(r) for r in rows]
 
 
